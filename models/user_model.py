@@ -6,13 +6,43 @@ from app import vuln, alive
 from models.books_model import Book
 from random import randrange
 from sqlalchemy.sql import text
+from werkzeug.security import generate_password_hash, check_password_hash
+
+
+class _PasswordHash:
+    __slots__ = ('_hash',)
+
+    def __init__(self, password_hash):
+        self._hash = password_hash
+
+    def __eq__(self, other):
+        if isinstance(other, _PasswordHash):
+            return self._hash == other._hash
+        if not isinstance(other, str):
+            return NotImplemented
+        return check_password_hash(self._hash, other)
+
+    def __ne__(self, other):
+        result = self.__eq__(other)
+        if result is NotImplemented:
+            return result
+        return not result
+
+    def __hash__(self):
+        return hash(self._hash)
+
+    def __str__(self):
+        return self._hash
+
+    def __repr__(self):
+        return '<password hash>'
 
 
 class User(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True, unique=True, autoincrement=True)
     username = db.Column(db.String(128), unique=True, nullable=False)
-    password = db.Column(db.String(128), nullable=False)
+    password_hash = db.Column('password', db.String(128), nullable=False)
     email = db.Column(db.String(128), nullable=False)
     admin = db.Column(db.Boolean, nullable=False, default=False)
 
@@ -21,8 +51,22 @@ class User(db.Model):
     def __init__(self, username, password, email, admin=False):
         self.username = username
         self.email = email
-        self.password = password
+        if isinstance(password, _PasswordHash):
+            self.password_hash = password._hash
+        else:
+            self.password_hash = generate_password_hash(str(password), method='pbkdf2:sha256')
         self.admin = admin
+
+    @property
+    def password(self):
+        return _PasswordHash(self.password_hash)
+
+    @password.setter
+    def password(self, value):
+        if isinstance(value, _PasswordHash):
+            self.password_hash = value._hash
+        else:
+            self.password_hash = generate_password_hash(str(value), method='pbkdf2:sha256')
 
     def __repr__(self):
         return f'{{"username": "{self.username}", "email": "{self.email}"}}'
@@ -56,7 +100,7 @@ class User(db.Model):
         return {'username': self.username, 'email': self.email}
 
     def json_debug(self):
-        return {'username': self.username, 'password': self.password, 'email': self.email, 'admin': self.admin}
+        return {'username': self.username, 'email': self.email, 'admin': self.admin}
 
     @staticmethod
     def get_all_users():
