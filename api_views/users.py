@@ -142,7 +142,7 @@ def update_email(username):
         user = User.query.filter_by(username=resp['sub']).first()
         if vuln:  # Regex DoS
             match = re.search(
-                r"^([0-9a-zA-Z]([-.\w]*[0-9a-zA-Z])*@{1}([0-9a-zA-Z][-\w]*[0-9a-zA-Z]\.)+[a-zA-Z]{2,9})$",
+                r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,63}$",
                 str(request_data.get('email')))
             if match:
                 user.email = request_data.get('email')
