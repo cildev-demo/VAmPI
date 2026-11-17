@@ -6,6 +6,7 @@ from app import vuln, alive
 from models.books_model import Book
 from random import randrange
 from sqlalchemy.sql import text
+from werkzeug.security import generate_password_hash, check_password_hash
 
 
 class User(db.Model):
@@ -21,8 +22,17 @@ class User(db.Model):
     def __init__(self, username, password, email, admin=False):
         self.username = username
         self.email = email
-        self.password = password
+        self.set_password(password)
         self.admin = admin
+
+    def set_password(self, password):
+        self.password = generate_password_hash(password, method='pbkdf2:sha256')
+
+    def check_password(self, password):
+        try:
+            return check_password_hash(self.password, password)
+        except (TypeError, ValueError):
+            return False
 
     def __repr__(self):
         return f'{{"username": "{self.username}", "email": "{self.email}"}}'
@@ -56,7 +66,7 @@ class User(db.Model):
         return {'username': self.username, 'email': self.email}
 
     def json_debug(self):
-        return {'username': self.username, 'password': self.password, 'email': self.email, 'admin': self.admin}
+        return {'username': self.username, 'email': self.email, 'admin': self.admin}
 
     @staticmethod
     def get_all_users():
@@ -69,8 +79,8 @@ class User(db.Model):
     @staticmethod
     def get_user(username):
         if vuln:  # SQLi Injection
-            user_query = f"SELECT * FROM users WHERE username = '{username}'"
-            query = db.session.execute(text(user_query))
+            user_query = "SELECT * FROM users WHERE username = :username"
+            query = db.session.execute(text(user_query), {"username": username})
             ret = query.fetchone()
             if ret:
                 fin_query = '{"username": "%s", "email": "%s"}' % (ret[1], ret[3])
