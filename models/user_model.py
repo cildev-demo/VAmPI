@@ -66,7 +66,7 @@ class User(db.Model):
         return {'username': self.username, 'email': self.email}
 
     def json_debug(self):
-        return {'username': self.username, 'email': self.email, 'admin': self.admin}
+        return {'username': self.username, 'email': self.email}
 
     @staticmethod
     def get_all_users():
